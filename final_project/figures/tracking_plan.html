@@ -1,0 +1,83 @@
+<!doctype html><html lang="uk"><head><meta charset="utf-8"><title>Трекінг-план</title>
+<style>
+@page { size: A4 landscape; margin: 14mm 14mm 16mm 14mm; }
+body { font-family: Arial, Helvetica, sans-serif; color: #0b0b0b; font-size: 10.5pt; line-height: 1.35; margin: 0; }
+h1 { font-size: 20pt; margin: 0 0 4px; } h2 { font-size: 13pt; color: #1c5cab; margin: 18px 0 6px; }
+.sub { color: #52514e; font-size: 10pt; margin-bottom: 4px; }
+.meta { color: #52514e; font-size: 9pt; border-bottom: 1px solid #c3c2b7; padding-bottom: 8px; margin-bottom: 10px; }
+table { border-collapse: collapse; width: 100%; page-break-inside: auto; }
+tr { page-break-inside: avoid; }
+th, td { border: 1px solid #c3c2b7; padding: 5px 7px; vertical-align: top; text-align: left; font-size: 9.5pt; }
+th { background: #e8eef7; } tr:nth-child(even) td { background: #f7f7f4; }
+code { font-family: Menlo, Consolas, monospace; font-size: 9pt; background: #f1f0ea; padding: 0 3px; border-radius: 3px; }
+ul { margin: 4px 0 8px 18px; padding: 0; } li { margin-bottom: 3px; }
+.pb { page-break-before: always; }
+</style></head><body>
+<h1>Трекінг-план A/B-експерименту</h1>
+<div class="sub">Новий підхід до розміщення онлайн-реклами продукту · Фінальний проєкт, Завдання №2</div>
+<div class="meta">Автор: Мойсеєнко Світлана · Дисципліна: Продуктова аналітика та прикладна статистика (GoIT Neoversity) · 17 жовтня 2026 р.</div>
+
+<h2>1. Мета трекінгу</h2>
+<p>Зафіксувати детальну поведінку користувачів від показу реклами до покупки так, щоб для контрольної (<code>Control</code>) і тестової
+(<code>Test</code>) груп можна було поденно порівнювати ефективність на рівні кожної події воронки: показ → клік → сесія на сайті →
+пошук → перегляд контенту → додавання в кошик → оформлення → покупка. Кожна подія має нести ознаку групи експерименту та ідентифікатори,
+що дозволяють склеїти рекламний клік із діями на сайті.</p>
+
+<h2>2. Воронка та події</h2>
+<table><tr><th style="width:17%">Подія</th><th style="width:30%">Коли спрацьовує</th><th>Атрибути події</th></tr>
+<tr><td>ad_impression</td><td>Показ рекламного оголошення користувачу (рекламна платформа)</td><td>campaign_id, campaign_name, experiment_group (Control/Test), placement, creative_id, ad_user_id, device, geo, cost_micros</td></tr>
+<tr><td>ad_click</td><td>Клік на оголошення з переходом на сайт</td><td>campaign_id, experiment_group, placement, creative_id, ad_user_id, click_id (gclid/fbclid), utm_source, utm_medium, utm_campaign, device, geo</td></tr>
+<tr><td>session_start / page_view</td><td>Початок сесії та перегляд посадкової сторінки після переходу</td><td>user_pseudo_id, session_id, click_id, experiment_group, landing_page_url, referrer, device, browser, is_new_user</td></tr>
+<tr><td>search</td><td>Користувач скористався пошуком на сайті</td><td>user_pseudo_id, session_id, experiment_group, search_term, results_count, filters_applied</td></tr>
+<tr><td>view_content (view_item)</td><td>Перегляд картки продукту / контенту</td><td>user_pseudo_id, session_id, experiment_group, item_id, item_name, item_category, price, currency, source (search/catalog/recommendation)</td></tr>
+<tr><td>add_to_cart</td><td>Додавання продукту до кошика</td><td>user_pseudo_id, session_id, experiment_group, item_id, item_category, price, quantity, cart_value, cart_items_count</td></tr>
+<tr><td>begin_checkout</td><td>Початок оформлення замовлення (додатковий крок для діагностики втрат між кошиком і покупкою)</td><td>user_pseudo_id, session_id, experiment_group, cart_value, cart_items_count, payment_method_selected</td></tr>
+<tr><td>purchase</td><td>Завершена покупка</td><td>user_pseudo_id, session_id, experiment_group, order_id, revenue, currency, items (id, qty, price), discount, payment_method, is_first_purchase</td></tr>
+</table>
+
+<h2>3. Спільні атрибути для всіх подій</h2>
+<table><tr><th style="width:28%">Атрибут</th><th>Призначення</th></tr>
+<tr><td>event_timestamp</td><td>Час події (UTC) — для поденної агрегації та аналізу часу до покупки</td></tr>
+<tr><td>user_pseudo_id</td><td>Анонімний ідентифікатор користувача (cookie / device id) — унікальні користувачі на кроці</td></tr>
+<tr><td>session_id</td><td>Ідентифікатор сесії — склеювання кроків воронки в межах візиту</td></tr>
+<tr><td>experiment_id, experiment_group</td><td>Ідентифікатор експерименту та група (Control / Test) — ключ порівняння</td></tr>
+<tr><td>click_id / utm_*</td><td>Зв'язок сесії з рекламним кліком і кампанією (атрибуція)</td></tr>
+<tr><td>device, platform, browser</td><td>Сегментація (мобільні / десктоп), пошук технічних проблем</td></tr>
+<tr><td>geo (country, region)</td><td>Сегментація за географією</td></tr>
+<tr><td>page_url, referrer</td><td>Контекст події на сайті</td></tr>
+</table>
+
+<h2>4. Відповідність подій полям датасету експерименту</h2>
+<table><tr><th style="width:22%">Поле датасету</th><th style="width:43%">Розрахунок з подій (за день і групу)</th><th>Зміст</th></tr>
+<tr><td>Spend</td><td>Сума cost за ad_impression / дані рекламного кабінету</td><td>Вартість, витрачена за день</td></tr>
+<tr><td># of Impressions</td><td>count(ad_impression)</td><td>Покази</td></tr>
+<tr><td>Reach</td><td>count(distinct ad_user_id) серед ad_impression</td><td>Унікальні охоплені користувачі</td></tr>
+<tr><td># of Website Clicks</td><td>count(ad_click)</td><td>Кліки на оголошення</td></tr>
+<tr><td># of Searches</td><td>count(distinct user_pseudo_id) з подією search</td><td>Користувачі, що шукали</td></tr>
+<tr><td># of View Content</td><td>count(distinct user_pseudo_id) з подією view_content</td><td>Користувачі, що переглядали контент</td></tr>
+<tr><td># of Add to Cart</td><td>count(distinct user_pseudo_id) з подією add_to_cart</td><td>Користувачі, що додали в кошик</td></tr>
+<tr><td># of Purchase</td><td>count(purchase) або count(distinct order_id)</td><td>Покупки</td></tr>
+</table>
+
+<h2>5. Похідні метрики для порівняння груп</h2>
+<ul>
+<li><b>CTR</b> = # of Website Clicks / # of Impressions; <b>CPC</b> = Spend / # of Website Clicks; <b>Частота</b> = Impressions / Reach.</li>
+<li><b>Покрокові конверсії</b>: Searches / Clicks, View Content / Searches, Add to Cart / View Content, Purchase / Add to Cart.</li>
+<li><b>Наскрізна конверсія</b> = Purchase / Clicks; <b>CPA</b> = Spend / Purchase; <b>ROAS</b> = Revenue / Spend (потребує <code>revenue</code> у події <code>purchase</code>).</li>
+<li><b>Якість аудиторії</b>: частка нових користувачів, середня кількість переглянутих товарів, час від кліку до покупки.</li>
+</ul>
+
+<h2>6. Правила збору та контролю якості</h2>
+<ul>
+<li>Група експерименту (<code>experiment_group</code>) присвоюється на рівні рекламної платформи й передається на сайт через <code>click_id</code>/<code>utm_campaign</code>; на сайті вона зберігається в cookie на весь період тесту, щоб усі наступні події користувача мали ту саму групу.</li>
+<li>Кожна подія надсилається один раз (дедуплікація за <code>event_id</code>); <code>purchase</code> підтверджується серверно (server-side) за <code>order_id</code>, щоб уникнути дублів і блокувань скриптів.</li>
+<li>Агрегація за день виконується в єдиному часовому поясі (UTC) для рекламних даних і веб-аналітики.</li>
+<li>Щоденні автоматичні перевірки: повнота даних за день для обох груп; відсутність фізично неможливих значень (наприклад, Purchase &gt; Add to Cart); частка аудиторії у групах близька до 50/50 (Sample Ratio Mismatch); узгодженість кліків у рекламному кабінеті та сесій на сайті (±10 %).</li>
+<li>Персональні дані (e-mail, телефон, адреса) у події не передаються — лише анонімні ідентифікатори.</li>
+</ul>
+
+<h2>7. Інструменти</h2>
+<p>Рекламні події — рекламний кабінет (Meta Ads / Google Ads) з експортом поденної статистики; події сайту — Google Analytics 4 / Amplitude
+через Google Tag Manager з увімкненим server-side підтвердженням покупок; сховище — BigQuery, щоденна вітрина «день × група × метрики»,
+з якої будуються звіти та розрахунки Завдань №3–5.</p>
+</body></html>
